@@ -26,10 +26,15 @@ function Get-N8nVersion {
 }
 
 function Invoke-Npm {
-    # Runs npm with the bundled Node.js on PATH. Streams npm's stdout/stderr
-    # to the visible console AND mirrors the same lines to bootstrap.log via
-    # Tee-Object. Exit code is exposed through the global $LASTEXITCODE,
-    # never as the function's return value — see prior commit for why.
+    # Runs npm with the bundled Node.js on PATH. Streams every npm line to
+    # the visible console AND appends it to bootstrap.log with AutoFlush so
+    # external tailers see each line immediately. Tee-Object was previously
+    # used here but its default 4KB stream buffer made the log appear stalled
+    # for minutes at a time during long installs.
+    #
+    # Exit code is exposed through the global $LASTEXITCODE, never as the
+    # function's return value — returning it would mix with pipeline output
+    # and break the caller's `if ($code -ne 0)` check.
     param(
         [Parameter(Mandatory=$true)][string]$InstallDir,
         [Parameter(Mandatory=$true)][string[]]$Args
@@ -38,12 +43,21 @@ function Invoke-Npm {
     $nodeDir = Join-Path $InstallDir 'node'
     $logFile = Join-Path $env:USERPROFILE '.n8n\logs\bootstrap.log'
     New-Item -ItemType Directory -Force -Path (Split-Path $logFile) | Out-Null
+
+    $writer = [System.IO.StreamWriter]::new($logFile, $true, [System.Text.UTF8Encoding]::new($false))
+    $writer.AutoFlush = $true
+
     $oldPath = $env:PATH
     try {
         $env:PATH = "$nodeDir;$oldPath"
-        & $npm @Args 2>&1 | Tee-Object -FilePath $logFile -Append
+        & $npm @Args 2>&1 | ForEach-Object {
+            $line = $_.ToString()
+            Write-Host $line
+            $writer.WriteLine($line)
+        }
     } finally {
         $env:PATH = $oldPath
+        try { $writer.Dispose() } catch {}
     }
 }
 
