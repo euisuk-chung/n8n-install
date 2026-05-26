@@ -191,7 +191,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Version 1.0.1 -Ski
 explorer .\build
 ```
 
-→ 새 `n8n-installer-1.0.1.exe` 더블클릭 → 한국어 마법사 → 트레이 아이콘 등장 → 첫 실행 시 npm 으로 n8n 본체 다운로드 (1~2분, 인터넷 필요) → 브라우저 자동 오픈.
+→ 새 `n8n-installer-1.0.1.exe` 더블클릭 → 한국어 마법사 → 트레이 아이콘 등장 → 첫 실행 시 npm 으로 n8n 본체 다운로드 (보통 **5~15분**, 회선/프록시에 따라 더 길어질 수 있음, 인터넷 필요) → 브라우저 자동 오픈.
 
 만약 첫 실행이 또 실패하면 **`%USERPROFILE%\.n8n\logs\bootstrap.log`** 파일이 자동으로 메모장에서 열립니다. 그 내용을 보고 npm/n8n 측 오류를 추적할 수 있습니다.
 

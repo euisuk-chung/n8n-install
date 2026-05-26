@@ -41,7 +41,7 @@ if (-not (Test-Path $pkgJson)) {
     Set-Content -Path $pkgJson -Value $initialPkg -Encoding ASCII
 }
 
-Write-Step "Running npm install n8n (requires internet, takes 1-2 minutes)..."
+Write-Step "Running npm install n8n (requires internet; typically 5-15 minutes, longer on slow links or behind a proxy)..."
 $code = Invoke-Npm -InstallDir $InstallDir -Args @(
     'install',
     'n8n',
