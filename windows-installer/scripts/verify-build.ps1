@@ -45,4 +45,5 @@ try {
 }
 
 Write-Host "OK"
+$global:LASTEXITCODE = 0
 exit 0

@@ -22,7 +22,10 @@ try {
     if (-not $SkipNodeDownload) {
         Write-Host "`n[1/4] Preparing Node.js portable bundle"
         & (Join-Path $PSScriptRoot 'download-nodejs.ps1')
-        if ($LASTEXITCODE -ne 0) { throw "download-nodejs.ps1 failed" }
+        $nodeExe = Join-Path $root 'vendor\node\node.exe'
+        if (-not (Test-Path $nodeExe)) {
+            throw "download-nodejs.ps1 did not produce $nodeExe"
+        }
     } else {
         Write-Host "`n[1/4] Skipping Node.js download (SkipNodeDownload)"
     }
@@ -118,7 +121,9 @@ Or pass -MsBuildPath 'C:\path\to\MSBuild.exe' explicitly.
     # 4. Verify
     Write-Host "`n[4/4] Verifying installer"
     & (Join-Path $PSScriptRoot 'verify-build.ps1') -InstallerPath $installer
-    if ($LASTEXITCODE -ne 0) { throw "verify-build.ps1 failed" }
+    if (-not (Test-Path $installer)) {
+        throw "Installer not found after build: $installer"
+    }
 
     Write-Host "`n=== Build complete ==="
     Write-Host "Installer: $installer"

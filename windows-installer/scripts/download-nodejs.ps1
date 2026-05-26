@@ -43,3 +43,4 @@ if (-not (Test-Path (Join-Path $targetDir 'node.exe'))) {
 }
 
 Write-Host "Node.js bundle ready: $targetDir"
+exit 0
