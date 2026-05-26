@@ -33,29 +33,42 @@ Access the editor at http://localhost:5678
 
 ### Windows (non-developers, double-click install)
 
-If you're on Windows and don't want to deal with Node.js, npm, or a terminal, use the bundled Windows installer:
+If you're on Windows and don't want to deal with Node.js, npm, or a terminal, this fork ships a tray-based Windows installer under [`windows-installer/`](./windows-installer/).
 
-1. Download `n8n-installer-<version>.exe` from the [Releases](https://github.com/euisuk-chung/n8n-install/releases) page (or build it yourself — see below).
-2. Double-click the installer. A Korean/English wizard guides you through the setup.
-3. After install, an n8n icon appears in the system tray:
+**What the user gets**
+
+1. Double-click `n8n-installer-<version>.exe`. A Korean/English wizard guides them through setup.
+2. After install, an n8n icon appears in the system tray:
    - **Left-click / double-click** → opens the n8n editor in your browser
    - **Right-click** → Start/Stop n8n, view logs, update n8n, open data folder, toggle auto-start on boot
-4. Workflows and credentials live at `%USERPROFILE%\.n8n` (the standard n8n location).
+3. Workflows and credentials live at `%USERPROFILE%\.n8n` (the standard n8n location).
 
 The installer bundles a portable Node.js LTS — no manual Node install required. The n8n payload itself is fetched from npm on the first launch (takes ~1–2 minutes; requires internet).
 
-**End-user guide (Korean):** [`windows-installer/INSTALL_GUIDE.md`](./windows-installer/INSTALL_GUIDE.md)
+**End-user guide (Korean):** [`windows-installer/INSTALL_GUIDE.md`](./windows-installer/INSTALL_GUIDE.md) — share this with non-developers.
 **Builder docs:** [`windows-installer/README.md`](./windows-installer/README.md)
 
-Build it yourself on Windows:
+**Getting the EXE**
 
-```powershell
-cd windows-installer
-.\scripts\build.ps1 -Version 1.0.0
-# Output: build\n8n-installer-1.0.0.exe
-```
+- **Pre-built**: [Releases](https://github.com/euisuk-chung/n8n-install/releases) (populated automatically when a `windows-installer-v*` tag is pushed via the [`Build: Windows Installer`](./.github/workflows/build-windows-installer.yml) workflow). If no release is published yet, build it yourself below.
+- **Build it yourself** on Windows 10/11:
 
-Requirements for building: Windows 10/11, .NET Framework 4.7.2 Build Tools, [Inno Setup 6](https://jrsoftware.org/isdl.php).
+  ```powershell
+  cd windows-installer
+  .\scripts\build.ps1 -Version 1.0.0
+  # Output: build\n8n-installer-1.0.0.exe
+  ```
+
+  Requires .NET Framework 4.7.2 Build Tools and [Inno Setup 6](https://jrsoftware.org/isdl.php).
+
+- **Publish a release**: tag and push to trigger the CI build:
+
+  ```bash
+  git tag windows-installer-v1.0.0
+  git push origin windows-installer-v1.0.0
+  ```
+
+  GitHub Actions builds on a Windows runner and attaches the EXE to a new Release.
 
 ## Resources
 

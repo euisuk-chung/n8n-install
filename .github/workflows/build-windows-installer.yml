@@ -1,0 +1,116 @@
+name: 'Build: Windows Installer'
+
+# Builds the non-developer n8n Windows installer (Inno Setup EXE) defined
+# under windows-installer/. Independent from the main n8n CI — triggers only
+# on installer-related changes, an explicit tag, or manual dispatch.
+#
+# Tag a release like:
+#   git tag windows-installer-v1.0.0 && git push origin windows-installer-v1.0.0
+# and the resulting EXE is attached to a GitHub Release automatically.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Installer version (e.g. 1.0.0)'
+        required: true
+        type: string
+      publish_release:
+        description: 'Create a GitHub Release with the EXE attached'
+        required: false
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'windows-installer-v*'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'windows-installer/**'
+      - '.github/workflows/build-windows-installer.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          $ref = "${{ github.ref }}"
+          if ($ref.StartsWith("refs/tags/windows-installer-v")) {
+            $v = $ref.Substring("refs/tags/windows-installer-v".Length)
+          } elseif ("${{ github.event.inputs.version }}" -ne "") {
+            $v = "${{ github.event.inputs.version }}"
+          } else {
+            $v = "0.0.0-pr${{ github.event.pull_request.number }}-$(Get-Date -Format yyyyMMddHHmm)"
+          }
+          Write-Host "Version: $v"
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        working-directory: windows-installer
+        run: |
+          .\scripts\build.ps1 -Version "${{ steps.ver.outputs.version }}"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: n8n-installer-${{ steps.ver.outputs.version }}
+          path: windows-installer/build/n8n-installer-${{ steps.ver.outputs.version }}.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Compute SHA256
+        id: hash
+        shell: pwsh
+        run: |
+          $file = "windows-installer/build/n8n-installer-${{ steps.ver.outputs.version }}.exe"
+          $hash = (Get-FileHash -Path $file -Algorithm SHA256).Hash
+          Write-Host "SHA256: $hash"
+          "sha256=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/windows-installer-v') || github.event.inputs.publish_release == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $tag = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "windows-installer-v$version" }
+          $exe = "windows-installer/build/n8n-installer-$version.exe"
+          $notes = @"
+          # n8n Windows Installer v$version
+
+          Non-developer Windows installer for n8n. Bundles a portable Node.js LTS and a tray launcher so that double-clicking the EXE is the only step required.
+
+          ## Install
+
+          1. Download ``n8n-installer-$version.exe`` below
+          2. Double-click; follow the Korean/English wizard
+          3. n8n icon appears in the system tray; left-click opens the editor
+
+          See [INSTALL_GUIDE.md](https://github.com/${{ github.repository }}/blob/master/windows-installer/INSTALL_GUIDE.md) for details.
+
+          ## Checksum
+
+          - SHA256: ``${{ steps.hash.outputs.sha256 }}``
+          "@
+          # Create tag-as-release if invoked via workflow_dispatch without an existing tag
+          if ("${{ github.ref_type }}" -ne "tag") {
+            gh release create $tag --target $env:GITHUB_SHA --title "n8n Windows Installer v$version" --notes "$notes" "$exe"
+          } else {
+            gh release create $tag --title "n8n Windows Installer v$version" --notes "$notes" "$exe"
+          }
