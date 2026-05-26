@@ -37,6 +37,7 @@ namespace N8nTray
             _miStop = new ToolStripMenuItem(Localization.T("Menu.Stop"), null, (s, e) => StopN8n());
             _miUpdate = new ToolStripMenuItem(Localization.T("Menu.Update"), null, (s, e) => UpdateN8nAsync());
             var miLogs = new ToolStripMenuItem(Localization.T("Menu.Logs"), null, (s, e) => OpenLogs());
+            var miCopyUrl = new ToolStripMenuItem(Localization.T("Menu.CopyUrl"), null, (s, e) => CopyUrl());
             var miData = new ToolStripMenuItem(Localization.T("Menu.DataFolder"), null, (s, e) => OpenDataFolder());
             _miAutoStart = new ToolStripMenuItem(Localization.T("Menu.AutoStart"), null, (s, e) => ToggleAutoStart());
             _miAutoStart.CheckOnClick = false;
@@ -51,6 +52,7 @@ namespace N8nTray
             _menu.Items.Add(_miStop);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(miLogs);
+            _menu.Items.Add(miCopyUrl);
             _menu.Items.Add(_miUpdate);
             _menu.Items.Add(miData);
             _menu.Items.Add(_miAutoStart);
@@ -149,11 +151,17 @@ namespace N8nTray
 
                 _n8n.Start();
 
-                // Open browser when ready
+                // Open browser AND notify the user of the actual URL when n8n is ready.
+                // The notification matters because the chosen port can differ from
+                // 5678 (e.g. when VS Code's Live Server already holds it). Without
+                // this, users who type "localhost:5678" by habit see whatever foreign
+                // service is on that port instead of n8n.
                 _ = Task.Run(() =>
                 {
                     bool ready = PortReadiness.WaitForListen(_n8n.Port, TimeSpan.FromSeconds(90), _backgroundCts.Token);
-                    if (ready) OpenBrowser();
+                    if (!ready) return;
+                    OpenBrowser();
+                    ShowReadyBalloon();
                 });
             }
             catch (Exception ex)
@@ -183,6 +191,46 @@ namespace N8nTray
                 MessageBox.Show(Localization.T("Dialog.UpdateFail", "see logs"), "n8n", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             if (wasRunning) _n8n.Start();
+        }
+
+        private void CopyUrl()
+        {
+            try
+            {
+                Clipboard.SetText(_n8n.Url);
+                _icon.ShowBalloonTip(3000, "n8n", Localization.T("Balloon.UrlCopied", _n8n.Url), ToolTipIcon.Info);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("URL 복사 실패: " + ex.Message, "n8n");
+            }
+        }
+
+        private void ShowReadyBalloon()
+        {
+            if (_icon == null || !_icon.Visible) return;
+            try
+            {
+                Action show = () =>
+                {
+                    string title = "n8n";
+                    string body;
+                    if (_n8n.Port == 5678)
+                    {
+                        body = Localization.T("Balloon.Ready", _n8n.Url);
+                    }
+                    else
+                    {
+                        // Port shifted from the default — make that obvious so the user
+                        // doesn't fall back on muscle-memory and type 5678.
+                        body = Localization.T("Balloon.ReadyShifted", _n8n.Url, _n8n.Port);
+                    }
+                    _icon.ShowBalloonTip(10000, title, body, ToolTipIcon.Info);
+                };
+                if (_menu.InvokeRequired) _menu.BeginInvoke(show);
+                else show();
+            }
+            catch { }
         }
 
         private void OpenBrowser()

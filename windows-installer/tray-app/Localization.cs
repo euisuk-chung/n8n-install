@@ -15,6 +15,7 @@ namespace N8nTray
             { "Menu.Stop",          "n8n 중지" },
             { "Menu.Restart",       "n8n 재시작" },
             { "Menu.Logs",          "로그 보기" },
+            { "Menu.CopyUrl",       "URL 복사" },
             { "Menu.Update",        "n8n 업데이트" },
             { "Menu.DataFolder",    "데이터 폴더 열기" },
             { "Menu.AutoStart",     "Windows 시작 시 자동 실행" },
@@ -34,6 +35,9 @@ namespace N8nTray
             { "Dialog.UpdateFail",  "n8n 업데이트에 실패했습니다.\n\n{0}" },
             { "Dialog.AboutBody",   "n8n Tray Launcher\n버전 {0}\n\nn8n: {1}\n\n공식: https://n8n.io\n매뉴얼: https://docs.n8n.io" },
             { "Error.NodeMissing",  "Node.js 번들을 찾을 수 없습니다.\n인스톨러를 다시 실행해 주세요." },
+            { "Balloon.Ready",        "n8n 실행 중\n{0}\n트레이 아이콘 좌클릭으로 언제든 열기" },
+            { "Balloon.ReadyShifted", "n8n 실행 중\n{0}\n\n(기본 포트 5678이 다른 프로그램에 사용 중이라 {1}번 포트로 자동 변경됨. 트레이 아이콘 좌클릭이 가장 안전)" },
+            { "Balloon.UrlCopied",    "URL 복사됨: {0}" },
         };
 
         private static readonly Dictionary<string, string> En = new Dictionary<string, string>
@@ -43,6 +47,7 @@ namespace N8nTray
             { "Menu.Stop",          "Stop n8n" },
             { "Menu.Restart",       "Restart n8n" },
             { "Menu.Logs",          "View logs" },
+            { "Menu.CopyUrl",       "Copy URL" },
             { "Menu.Update",        "Update n8n" },
             { "Menu.DataFolder",    "Open data folder" },
             { "Menu.AutoStart",     "Start with Windows" },
@@ -62,6 +67,9 @@ namespace N8nTray
             { "Dialog.UpdateFail",  "Failed to update n8n.\n\n{0}" },
             { "Dialog.AboutBody",   "n8n Tray Launcher\nVersion {0}\n\nn8n: {1}\n\nWebsite: https://n8n.io\nDocs: https://docs.n8n.io" },
             { "Error.NodeMissing",  "Bundled Node.js was not found.\nPlease re-run the installer." },
+            { "Balloon.Ready",        "n8n is running\n{0}\nLeft-click the tray icon to open it anytime" },
+            { "Balloon.ReadyShifted", "n8n is running\n{0}\n\n(Default port 5678 was in use, so n8n moved to port {1}. Always use the tray icon — it picks the right port.)" },
+            { "Balloon.UrlCopied",    "URL copied: {0}" },
         };
 
         public static string T(string key)
