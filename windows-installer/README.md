@@ -212,6 +212,7 @@ explorer .\build
 | `latest.log` 에 `Editor is now accessible via: http://localhost:5679+` | 정상 — 5678 점유 프로그램 때문에 자동 변경됨. 트레이 풍선 알림이 안내 |
 | 설치 직후 npm install 이 silent 하게 "실패" 로 마무리 (added N packages 후 exit 1) | n8n 의 Scarf 텔레메트리 postinstall 영향. 1.0.6+ 빌드에서 환경변수로 비활성화됨 |
 | Task runner 가 403 에러 | 에디터와 task broker 가 같은 포트에 충돌. 1.0.6+ 빌드에서 두 포트 분리 할당됨 |
+| `FATAL ERROR: ... JavaScript heap out of memory` (exit code 134) | npm 이 의존성 트리 resolve 중 기본 Node 힙(~1.5GB) 초과. 1.0.7+ 빌드에서 `NODE_OPTIONS=--max-old-space-size=4096` 으로 4GB 확보. 외부에서 빌드 디버깅 시 같은 환경변수 export |
 
 ## 향후 개선 (Out of Scope)
 

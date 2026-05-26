@@ -284,7 +284,11 @@ namespace N8nTray
                 psi.EnvironmentVariables["N8N_USER_FOLDER"] = _userDataDir;
                 psi.EnvironmentVariables["N8N_PORT"] = Port.ToString();
                 psi.EnvironmentVariables["N8N_RUNNERS_TASK_BROKER_PORT"] = BrokerPort.ToString();
-                psi.EnvironmentVariables["NODE_OPTIONS"] = "";
+                // Give the n8n runtime a 4GB old-space heap. The default ~1.5GB is
+                // borderline for n8n's process — running multiple workflows can push
+                // it over the edge — and we already need this much for the install
+                // step anyway (see Invoke-Npm in helpers.ps1).
+                psi.EnvironmentVariables["NODE_OPTIONS"] = "--max-old-space-size=4096";
                 // Prepend bundled node dir to PATH so spawned children find npm/npx
                 var existingPath = psi.EnvironmentVariables.ContainsKey("PATH")
                     ? psi.EnvironmentVariables["PATH"]

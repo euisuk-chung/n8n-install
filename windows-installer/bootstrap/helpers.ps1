@@ -72,6 +72,15 @@ function Invoke-Npm {
     $env:DO_NOT_TRACK = '1'
     $env:N8N_DIAGNOSTICS_ENABLED = 'false'
 
+    # n8n has ~2200 transitive dependencies. Resolving the full graph in
+    # one npm install run easily exceeds Node's default old-space heap
+    # (~1.5GB) and the install crashes with
+    #   FATAL ERROR: MarkCompactCollector: young object promotion failed
+    #   Allocation failed - JavaScript heap out of memory
+    # exiting with code 134. 4GB headroom resolves it on every machine
+    # we have observed.
+    $env:NODE_OPTIONS = '--max-old-space-size=4096'
+
     # npm emits informational text (verbose, http, warn) to stderr at every
     # log level. With $ErrorActionPreference = 'Stop' inherited from the
     # caller, merging via 2>&1 turns each stderr line into a terminating
