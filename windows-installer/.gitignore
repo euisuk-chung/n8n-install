@@ -1,0 +1,6 @@
+build/
+vendor/
+tray-app/bin/
+tray-app/obj/
+*.user
+*.suo

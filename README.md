@@ -31,6 +31,32 @@ docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n
 
 Access the editor at http://localhost:5678
 
+### Windows (non-developers, double-click install)
+
+If you're on Windows and don't want to deal with Node.js, npm, or a terminal, use the bundled Windows installer:
+
+1. Download `n8n-installer-<version>.exe` from the [Releases](https://github.com/n8n-io/n8n/releases) page (or build it yourself — see below).
+2. Double-click the installer. A Korean/English wizard guides you through the setup.
+3. After install, an n8n icon appears in the system tray:
+   - **Left-click / double-click** → opens the n8n editor in your browser
+   - **Right-click** → Start/Stop n8n, view logs, update n8n, open data folder, toggle auto-start on boot
+4. Workflows and credentials live at `%USERPROFILE%\.n8n` (the standard n8n location).
+
+The installer bundles a portable Node.js LTS — no manual Node install required. The n8n payload itself is fetched from npm on the first launch (takes ~1–2 minutes; requires internet).
+
+**End-user guide (Korean):** [`windows-installer/INSTALL_GUIDE.md`](./windows-installer/INSTALL_GUIDE.md)
+**Builder docs:** [`windows-installer/README.md`](./windows-installer/README.md)
+
+Build it yourself on Windows:
+
+```powershell
+cd windows-installer
+.\scripts\build.ps1 -Version 1.0.0
+# Output: build\n8n-installer-1.0.0.exe
+```
+
+Requirements for building: Windows 10/11, .NET Framework 4.7.2 Build Tools, [Inno Setup 6](https://jrsoftware.org/isdl.php).
+
 ## Resources
 
 - 📚 [Documentation](https://docs.n8n.io)

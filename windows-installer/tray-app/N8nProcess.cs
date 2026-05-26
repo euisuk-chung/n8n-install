@@ -1,0 +1,289 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace N8nTray
+{
+    internal enum N8nState
+    {
+        Idle,
+        Installing,
+        Starting,
+        Running,
+        Stopping,
+        Error,
+    }
+
+    internal class N8nProcess
+    {
+        public event Action<N8nState> StateChanged;
+        public event Action<string> LogLine;
+
+        private readonly string _installDir;
+        private readonly string _userDataDir;
+        private readonly string _logDir;
+        private Process _proc;
+        private StreamWriter _logWriter;
+        private readonly object _lock = new object();
+
+        public N8nState State { get; private set; } = N8nState.Idle;
+        public int Port { get; private set; } = 5678;
+        public string Url
+        {
+            get { return "http://localhost:" + Port; }
+        }
+
+        public string InstallDir { get { return _installDir; } }
+        public string UserDataDir { get { return _userDataDir; } }
+        public string LogDir { get { return _logDir; } }
+        public string LatestLogPath
+        {
+            get { return Path.Combine(_logDir, "latest.log"); }
+        }
+
+        public N8nProcess()
+        {
+            _installDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
+            _userDataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".n8n");
+            _logDir = Path.Combine(_userDataDir, "logs");
+            Directory.CreateDirectory(_logDir);
+        }
+
+        public bool IsN8nInstalled()
+        {
+            var binPath = Path.Combine(_installDir, "n8n-data", "node_modules", "n8n", "bin", "n8n");
+            return File.Exists(binPath);
+        }
+
+        public string NodeExe
+        {
+            get { return Path.Combine(_installDir, "node", "node.exe"); }
+        }
+
+        public string NpmCmd
+        {
+            get { return Path.Combine(_installDir, "node", "npm.cmd"); }
+        }
+
+        public bool HasNodeBundle()
+        {
+            return File.Exists(NodeExe);
+        }
+
+        /// Runs first-run install (npm install n8n) synchronously, returns true on success.
+        /// Streams output via LogLine.
+        public bool RunFirstInstall(CancellationToken token)
+        {
+            SetState(N8nState.Installing);
+            var scriptPath = Path.Combine(_installDir, "bootstrap", "first-run-install.ps1");
+            return RunPowerShell(scriptPath, "-InstallDir \"" + _installDir + "\"", token);
+        }
+
+        public bool RunUpdate(CancellationToken token)
+        {
+            var scriptPath = Path.Combine(_installDir, "bootstrap", "update-n8n.ps1");
+            return RunPowerShell(scriptPath, "-InstallDir \"" + _installDir + "\"", token);
+        }
+
+        private bool RunPowerShell(string scriptPath, string args, CancellationToken token)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + scriptPath + "\" " + args,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = _installDir,
+                };
+                using (var p = Process.Start(psi))
+                {
+                    p.OutputDataReceived += (s, e) => { if (e.Data != null) EmitLog(e.Data); };
+                    p.ErrorDataReceived += (s, e) => { if (e.Data != null) EmitLog("[ERR] " + e.Data); };
+                    p.BeginOutputReadLine();
+                    p.BeginErrorReadLine();
+
+                    while (!p.HasExited)
+                    {
+                        if (token.IsCancellationRequested)
+                        {
+                            try { p.Kill(); } catch { }
+                            return false;
+                        }
+                        Thread.Sleep(200);
+                    }
+                    return p.ExitCode == 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                EmitLog("[FATAL] " + ex.Message);
+                return false;
+            }
+        }
+
+        /// Starts n8n. Allocates port, sets env, spawns node.exe, polls port,
+        /// returns when port responds (or throws).
+        public void Start()
+        {
+            lock (_lock)
+            {
+                if (_proc != null && !_proc.HasExited)
+                    return;
+                if (!HasNodeBundle())
+                    throw new InvalidOperationException(Localization.T("Error.NodeMissing"));
+
+                SetState(N8nState.Starting);
+
+                int chosenPort = PortReadiness.FindFreePort(5678, 5688);
+                if (chosenPort < 0) chosenPort = 5678;
+                Port = chosenPort;
+
+                OpenLogFile();
+
+                var n8nBin = Path.Combine(_installDir, "n8n-data", "node_modules", "n8n", "bin", "n8n");
+                var psi = new ProcessStartInfo
+                {
+                    FileName = NodeExe,
+                    Arguments = "\"" + n8nBin + "\" start",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = _installDir,
+                };
+                psi.EnvironmentVariables["N8N_USER_FOLDER"] = _userDataDir;
+                psi.EnvironmentVariables["N8N_PORT"] = Port.ToString();
+                psi.EnvironmentVariables["NODE_OPTIONS"] = "";
+                // Prepend bundled node dir to PATH so spawned children find npm/npx
+                var existingPath = psi.EnvironmentVariables.ContainsKey("PATH")
+                    ? psi.EnvironmentVariables["PATH"]
+                    : Environment.GetEnvironmentVariable("PATH");
+                psi.EnvironmentVariables["PATH"] = Path.Combine(_installDir, "node") + ";" + existingPath;
+
+                _proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
+                _proc.OutputDataReceived += (s, e) => { if (e.Data != null) WriteLog(e.Data); };
+                _proc.ErrorDataReceived += (s, e) => { if (e.Data != null) WriteLog("[ERR] " + e.Data); };
+                _proc.Exited += OnProcessExited;
+                _proc.Start();
+                _proc.BeginOutputReadLine();
+                _proc.BeginErrorReadLine();
+            }
+
+            // Wait for port outside the lock so we don't block other operations
+            Task.Run(() =>
+            {
+                bool ready = PortReadiness.WaitForListen(Port, TimeSpan.FromSeconds(90), CancellationToken.None);
+                if (ready)
+                {
+                    SetState(N8nState.Running);
+                }
+                else if (_proc != null && !_proc.HasExited)
+                {
+                    // Process is up but no port — treat as error-ish but keep process running
+                    SetState(N8nState.Error);
+                }
+            });
+        }
+
+        public void Stop()
+        {
+            lock (_lock)
+            {
+                if (_proc == null || _proc.HasExited)
+                {
+                    SetState(N8nState.Idle);
+                    return;
+                }
+                SetState(N8nState.Stopping);
+                try
+                {
+                    _proc.Kill();
+                    _proc.WaitForExit(5000);
+                }
+                catch { }
+                CloseLogFile();
+                _proc = null;
+                SetState(N8nState.Idle);
+            }
+        }
+
+        public void Restart()
+        {
+            Stop();
+            Thread.Sleep(500);
+            Start();
+        }
+
+        private void OnProcessExited(object sender, EventArgs e)
+        {
+            if (State == N8nState.Stopping || State == N8nState.Idle)
+                return;
+            SetState(N8nState.Error);
+            CloseLogFile();
+        }
+
+        private void OpenLogFile()
+        {
+            try
+            {
+                CloseLogFile();
+                var path = LatestLogPath;
+                _logWriter = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read), Encoding.UTF8);
+                _logWriter.AutoFlush = true;
+                _logWriter.WriteLine("=== n8n session started " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " ===");
+                _logWriter.WriteLine("Port: " + Port);
+                _logWriter.WriteLine("InstallDir: " + _installDir);
+                _logWriter.WriteLine("UserDataDir: " + _userDataDir);
+                _logWriter.WriteLine("--");
+            }
+            catch { }
+        }
+
+        private void CloseLogFile()
+        {
+            try
+            {
+                if (_logWriter != null)
+                {
+                    _logWriter.Flush();
+                    _logWriter.Dispose();
+                    _logWriter = null;
+                }
+            }
+            catch { }
+        }
+
+        private void WriteLog(string line)
+        {
+            EmitLog(line);
+            try
+            {
+                if (_logWriter != null)
+                    _logWriter.WriteLine(line);
+            }
+            catch { }
+        }
+
+        private void EmitLog(string line)
+        {
+            var handler = LogLine;
+            if (handler != null) handler(line);
+        }
+
+        private void SetState(N8nState s)
+        {
+            State = s;
+            var handler = StateChanged;
+            if (handler != null) handler(s);
+        }
+    }
+}
