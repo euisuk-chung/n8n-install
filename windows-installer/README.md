@@ -135,14 +135,79 @@ windows-installer/
 
 자산이 없으면 `setup.iss` 의 `SetupIconFile` / `WizardImageFile` 라인을 주석 처리하면 기본값으로 빌드됩니다.
 
+## 기존 설치 정리하고 다시 빌드/배포하기
+
+빌드 자체가 망가졌거나 인스톨러를 고친 뒤 깨끗한 상태에서 다시 테스트하고 싶을 때의 표준 절차입니다. 다섯 단계 모두 PowerShell 에서 (관리자 권한 불필요):
+
+### 1. 실행 중인 n8n 트레이/노드 프로세스 종료
+
+```powershell
+Stop-Process -Name "N8nTray" -Force -ErrorAction SilentlyContinue
+Stop-Process -Name "node"    -Force -ErrorAction SilentlyContinue
+```
+
+트레이 아이콘 우클릭 → "종료" 로도 가능하지만, 첫 실행이 실패해 트레이가 메뉴를 못 띄우는 상황에서도 위 명령은 항상 통합니다.
+
+### 2. 기존 설치 제거
+
+인스톨러가 만든 제거 마법사를 실행:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\n8n\unins000.exe"
+```
+
+마법사가 안 뜨거나 파일이 없으면 **시작 메뉴 → 설정 → 앱 → 설치된 앱 → "n8n" 검색 → 제거**.
+
+마지막 단계의 "사용자 데이터(`%USERPROFILE%\.n8n`)도 삭제하시겠습니까?":
+- 워크플로/자격증명이 들어있다면 → **아니오** (보존)
+- 첫 설치가 실패해서 깨끗하게 다시 시작하려면 → **예**
+
+### 3. 잔여물 정리 (선택)
+
+제거 마법사가 모두 처리해 주지만, 디스크에 폴더가 남아있을 때:
+
+```powershell
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Programs\n8n" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "$env:USERPROFILE\.n8n"          -ErrorAction SilentlyContinue
+```
+
+⚠️ 두 번째 명령은 **사용자 데이터를 영구 삭제**합니다. 워크플로가 들어있다면 먼저 백업하세요.
+
+### 4. 소스 최신화 + 재빌드
+
+```powershell
+cd <repo>\windows-installer
+git pull
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Version 1.0.1 -SkipNodeDownload
+```
+
+- 이미 받아둔 `vendor\node\` 가 있으므로 `-SkipNodeDownload` 로 1단계를 건너뜁니다 (Node.js 버전을 바꾸려면 빼고 실행).
+- 버전은 이전 빌드 산출물과 구분하기 위해 **올려서** 주는 것을 추천 (`1.0.0` → `1.0.1`).
+- 산출물: `build\n8n-installer-1.0.1.exe`
+
+### 5. 새 EXE 설치
+
+```powershell
+explorer .\build
+```
+
+→ 새 `n8n-installer-1.0.1.exe` 더블클릭 → 한국어 마법사 → 트레이 아이콘 등장 → 첫 실행 시 npm 으로 n8n 본체 다운로드 (1~2분, 인터넷 필요) → 브라우저 자동 오픈.
+
+만약 첫 실행이 또 실패하면 **`%USERPROFILE%\.n8n\logs\bootstrap.log`** 파일이 자동으로 메모장에서 열립니다. 그 내용을 보고 npm/n8n 측 오류를 추적할 수 있습니다.
+
 ## 트러블슈팅
 
 | 증상 | 원인 / 해결 |
 |------|-------------|
 | `ISCC : command not found` | Inno Setup 6 설치, PATH 추가 또는 `-InnoSetupPath` 옵션 전달 |
 | `MSB1009: 프로젝트 파일이 존재하지 않습니다` | `pwd` 가 `windows-installer/` 인지 확인 |
+| `download-nodejs.ps1 failed` 인데 "Node.js bundle ready" 가 먼저 떴음 | 옛 빌드 스크립트 잔여물 — `git pull` 후 재실행 |
+| `MSBuild.exe not found` | VS Build Tools 2022 의 ".NET 데스크톱 빌드 도구" 워크로드 미설치 — Visual Studio Installer 에서 **수정** → 워크로드 추가 |
+| 빌드는 됐는데 EXE 가 22~23 MB | 정상 — Inno Setup LZMA2/max 압축 결과. 18 MB 이상이면 OK |
 | 빌드 EXE 백신 차단 | 코드 서명 미적용 — 임시로 빌드 폴더를 백신 예외 등록 |
-| 클린 VM 첫 실행 시 npm 실패 | 인터넷/프록시 확인 — 사용자 매뉴얼 참고 |
+| 설치 후 "n8n 설치 실패 - see logs" | `%USERPROFILE%\.n8n\logs\bootstrap.log` 열어 npm 출력 확인 |
+| `Write-Step "...한글..."` 위치에서 `ParserError` | 한글이 포함된 `.ps1` 가 UTF-8 BOM 없이 저장됨 — 모든 부트스트랩 스크립트는 **ASCII 전용**이어야 함. UI 문자열은 `tray-app\Localization.cs` 에서 관리 |
+| 클린 VM 첫 실행 시 npm 실패 | 인터넷/프록시 확인 — `INSTALL_GUIDE.md` 의 회사 PC 섹션 참고 |
 
 ## 향후 개선 (Out of Scope)
 
