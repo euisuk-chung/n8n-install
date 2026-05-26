@@ -35,7 +35,7 @@ Access the editor at http://localhost:5678
 
 If you're on Windows and don't want to deal with Node.js, npm, or a terminal, use the bundled Windows installer:
 
-1. Download `n8n-installer-<version>.exe` from the [Releases](https://github.com/n8n-io/n8n/releases) page (or build it yourself — see below).
+1. Download `n8n-installer-<version>.exe` from the [Releases](https://github.com/euisuk-chung/n8n-install/releases) page (or build it yourself — see below).
 2. Double-click the installer. A Korean/English wizard guides you through the setup.
 3. After install, an n8n icon appears in the system tray:
    - **Left-click / double-click** → opens the n8n editor in your browser
