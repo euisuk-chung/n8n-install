@@ -10,6 +10,24 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Same window-stays-open guard as first-run-install.ps1.
+trap {
+    Write-Host ""
+    Write-Host "==============================" -ForegroundColor Red
+    Write-Host "UNHANDLED ERROR" -ForegroundColor Red
+    Write-Host "==============================" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    if ($_.InvocationInfo) {
+        Write-Host ""
+        Write-Host "Location:" -ForegroundColor Yellow
+        Write-Host $_.InvocationInfo.PositionMessage
+    }
+    Write-Host ""
+    Write-Host "Press Enter to close this window..." -ForegroundColor Yellow
+    $null = Read-Host
+    exit 1
+}
+
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptDir 'helpers.ps1')
 
@@ -35,7 +53,7 @@ Invoke-Npm -InstallDir $InstallDir -Args @(
     '--no-audit',
     '--no-fund',
     '--progress=true',
-    '--loglevel', 'http'
+    '--loglevel', 'verbose'
 )
 $code = $LASTEXITCODE
 

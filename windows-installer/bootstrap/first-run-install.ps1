@@ -15,6 +15,25 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Ensure the console NEVER closes silently on an unhandled error. trap fires
+# before the process exits, prints the error in red, and waits for Enter.
+trap {
+    Write-Host ""
+    Write-Host "==============================" -ForegroundColor Red
+    Write-Host "UNHANDLED ERROR" -ForegroundColor Red
+    Write-Host "==============================" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    if ($_.InvocationInfo) {
+        Write-Host ""
+        Write-Host "Location:" -ForegroundColor Yellow
+        Write-Host $_.InvocationInfo.PositionMessage
+    }
+    Write-Host ""
+    Write-Host "Press Enter to close this window..." -ForegroundColor Yellow
+    $null = Read-Host
+    exit 1
+}
+
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptDir 'helpers.ps1')
 
@@ -42,7 +61,8 @@ if (-not (Test-Path $pkgJson)) {
 }
 
 Write-Step "Running npm install n8n (requires internet; typically 5-15 minutes, longer on slow links or behind a proxy)..."
-Write-Step "Progress is streamed below. Look for 'idealTree', 'reify', and finally 'added N packages'."
+Write-Step "Output below is live from npm. Look for 'idealTree', 'reify', and finally 'added N packages'."
+Write-Step "If the output pauses for 1-2 min during 'idealTree', that is normal — npm is resolving the graph."
 Invoke-Npm -InstallDir $InstallDir -Args @(
     'install',
     'n8n',
@@ -50,7 +70,7 @@ Invoke-Npm -InstallDir $InstallDir -Args @(
     '--no-audit',
     '--no-fund',
     '--progress=true',
-    '--loglevel', 'http'
+    '--loglevel', 'verbose'
 )
 $code = $LASTEXITCODE
 
