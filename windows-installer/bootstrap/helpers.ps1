@@ -74,12 +74,16 @@ function Invoke-Npm {
 
     # n8n has ~2200 transitive dependencies. Resolving the full graph in
     # one npm install run easily exceeds Node's default old-space heap
-    # (~1.5GB) and the install crashes with
+    # and the install crashes with code 134:
     #   FATAL ERROR: MarkCompactCollector: young object promotion failed
     #   Allocation failed - JavaScript heap out of memory
-    # exiting with code 134. 4GB headroom resolves it on every machine
-    # we have observed.
-    $env:NODE_OPTIONS = '--max-old-space-size=4096'
+    #
+    # NOTE: passing the heap flag via NODE_OPTIONS env alone is NOT enough.
+    # In observation, npm sanitizes / clears NODE_OPTIONS for spawned
+    # children, and the dying process is one of those children. We pass
+    # the flag *directly on the command line* below as well, which always
+    # wins; the env var is kept as belt-and-suspenders for any sub-spawn.
+    $env:NODE_OPTIONS = '--max-old-space-size=8192'
 
     # npm emits informational text (verbose, http, warn) to stderr at every
     # log level. With $ErrorActionPreference = 'Stop' inherited from the
@@ -94,7 +98,10 @@ function Invoke-Npm {
     $oldPath = $env:PATH
     try {
         $env:PATH = "$nodeDir;$oldPath"
-        & $nodeExe $npmCli @Args 2>&1 | ForEach-Object {
+        # --max-old-space-size MUST be a node CLI arg, not just NODE_OPTIONS,
+        # because npm strips NODE_OPTIONS before spawning children and the
+        # OOM happens in one of those children. Passed directly here it sticks.
+        & $nodeExe '--max-old-space-size=8192' $npmCli @Args 2>&1 | ForEach-Object {
             $line = $_.ToString()
             Write-Host $line
             $writer.WriteLine($line)
