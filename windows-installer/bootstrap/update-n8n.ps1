@@ -28,7 +28,7 @@ $before = Get-N8nVersion -InstallDir $InstallDir
 Write-Step "Current version: $before"
 Write-Step "Running npm install n8n@latest..."
 
-$code = Invoke-Npm -InstallDir $InstallDir -Args @(
+Invoke-Npm -InstallDir $InstallDir -Args @(
     'install',
     'n8n@latest',
     '--prefix', $n8nDataDir,
@@ -37,6 +37,7 @@ $code = Invoke-Npm -InstallDir $InstallDir -Args @(
     '--progress=true',
     '--loglevel', 'http'
 )
+$code = $LASTEXITCODE
 
 if ($code -ne 0) {
     Write-Error "npm install failed (exit code $code)"

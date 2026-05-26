@@ -26,6 +26,13 @@ function Get-N8nVersion {
 }
 
 function Invoke-Npm {
+    # Runs npm with the bundled Node.js on PATH. Streams npm's stdout/stderr
+    # to the host (which the tray app captures into bootstrap.log), and
+    # exposes the exit code through the global $LASTEXITCODE — NOT through
+    # the function's return value. Returning $LASTEXITCODE here would mix
+    # the integer with any prior pipeline objects (npm output) and produce
+    # an array, which past versions of this code mistook for a non-zero
+    # exit status even after a successful install.
     param(
         [Parameter(Mandatory=$true)][string]$InstallDir,
         [Parameter(Mandatory=$true)][string[]]$Args
@@ -35,8 +42,7 @@ function Invoke-Npm {
     $oldPath = $env:PATH
     try {
         $env:PATH = "$nodeDir;$oldPath"
-        & $npm @Args
-        return $LASTEXITCODE
+        & $npm @Args 2>&1 | ForEach-Object { Write-Host $_ }
     } finally {
         $env:PATH = $oldPath
     }

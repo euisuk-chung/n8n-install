@@ -43,7 +43,7 @@ if (-not (Test-Path $pkgJson)) {
 
 Write-Step "Running npm install n8n (requires internet; typically 5-15 minutes, longer on slow links or behind a proxy)..."
 Write-Step "Progress is streamed below. Look for 'idealTree', 'reify', and finally 'added N packages'."
-$code = Invoke-Npm -InstallDir $InstallDir -Args @(
+Invoke-Npm -InstallDir $InstallDir -Args @(
     'install',
     'n8n',
     '--prefix', $n8nDataDir,
@@ -52,6 +52,7 @@ $code = Invoke-Npm -InstallDir $InstallDir -Args @(
     '--progress=true',
     '--loglevel', 'http'
 )
+$code = $LASTEXITCODE
 
 if ($code -ne 0) {
     Write-Error "npm install failed (exit code $code)"
