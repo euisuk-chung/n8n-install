@@ -34,7 +34,8 @@ $code = Invoke-Npm -InstallDir $InstallDir -Args @(
     '--prefix', $n8nDataDir,
     '--no-audit',
     '--no-fund',
-    '--loglevel', 'error'
+    '--progress=true',
+    '--loglevel', 'http'
 )
 
 if ($code -ne 0) {

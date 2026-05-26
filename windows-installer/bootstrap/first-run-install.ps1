@@ -42,13 +42,15 @@ if (-not (Test-Path $pkgJson)) {
 }
 
 Write-Step "Running npm install n8n (requires internet; typically 5-15 minutes, longer on slow links or behind a proxy)..."
+Write-Step "Progress is streamed below. Look for 'idealTree', 'reify', and finally 'added N packages'."
 $code = Invoke-Npm -InstallDir $InstallDir -Args @(
     'install',
     'n8n',
     '--prefix', $n8nDataDir,
     '--no-audit',
     '--no-fund',
-    '--loglevel', 'error'
+    '--progress=true',
+    '--loglevel', 'http'
 )
 
 if ($code -ne 0) {
