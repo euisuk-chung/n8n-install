@@ -347,8 +347,11 @@ namespace N8nTray
             }
             catch { }
 
-            MessageBox.Show(Localization.T("Dialog.AboutBody", trayVersion, n8nVersion),
-                            "n8n", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            var body = Localization.T("Dialog.AboutBody", trayVersion, n8nVersion)
+                       + "\n\nEditor port: " + _n8n.Port
+                       + "\nBroker port: " + _n8n.BrokerPort;
+
+            MessageBox.Show(body, "n8n", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void Quit()

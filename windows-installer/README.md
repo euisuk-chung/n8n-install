@@ -208,6 +208,10 @@ explorer .\build
 | 설치 후 "n8n 설치 실패 - see logs" | `%USERPROFILE%\.n8n\logs\bootstrap.log` 열어 npm 출력 확인 |
 | `Write-Step "...한글..."` 위치에서 `ParserError` | 한글이 포함된 `.ps1` 가 UTF-8 BOM 없이 저장됨 — 모든 부트스트랩 스크립트는 **ASCII 전용**이어야 함. UI 문자열은 `tray-app\Localization.cs` 에서 관리 |
 | 클린 VM 첫 실행 시 npm 실패 | 인터넷/프록시 확인 — `INSTALL_GUIDE.md` 의 회사 PC 섹션 참고 |
+| 브라우저에 `Cannot GET /` 표시 | 사용자가 옛 포트(예: 5678) 로 직접 접속 중. 다른 프로그램(VS Code Live Server 등)이 5678 점유 시 n8n 은 5679 등으로 옮겨감. 트레이 좌클릭 또는 우클릭 → "URL 복사" 사용 |
+| `latest.log` 에 `Editor is now accessible via: http://localhost:5679+` | 정상 — 5678 점유 프로그램 때문에 자동 변경됨. 트레이 풍선 알림이 안내 |
+| 설치 직후 npm install 이 silent 하게 "실패" 로 마무리 (added N packages 후 exit 1) | n8n 의 Scarf 텔레메트리 postinstall 영향. 1.0.6+ 빌드에서 환경변수로 비활성화됨 |
+| Task runner 가 403 에러 | 에디터와 task broker 가 같은 포트에 충돌. 1.0.6+ 빌드에서 두 포트 분리 할당됨 |
 
 ## 향후 개선 (Out of Scope)
 

@@ -42,10 +42,10 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
 
-; Optional branding assets — comment out if files don't exist
-;SetupIconFile=assets\icon.ico
+; n8n branding assets
+SetupIconFile=assets\icon.ico
 ;WizardImageFile=assets\banner.bmp
-;UninstallDisplayIcon={app}\icon.ico
+UninstallDisplayIcon={app}\icon.ico
 
 LicenseFile=assets\license-ko.txt
 

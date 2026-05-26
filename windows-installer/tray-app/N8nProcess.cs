@@ -31,6 +31,11 @@ namespace N8nTray
 
         public N8nState State { get; private set; } = N8nState.Idle;
         public int Port { get; private set; } = 5678;
+        // n8n spawns an internal task broker (default port 5679). When the editor
+        // is forced off 5678 by a port conflict, both end up wanting 5679 and the
+        // runner connection 403s. We allocate a distinct free port for the broker
+        // and expose it here for the About dialog / debugging.
+        public int BrokerPort { get; private set; } = 5679;
         public string Url
         {
             get { return "http://localhost:" + Port; }
@@ -253,9 +258,15 @@ namespace N8nTray
 
                 SetState(N8nState.Starting);
 
-                int chosenPort = PortReadiness.FindFreePort(5678, 5688);
-                if (chosenPort < 0) chosenPort = 5678;
-                Port = chosenPort;
+                // Allocate two distinct free ports: one for the editor (HTTP) and
+                // one for n8n's internal task broker. Searching from 5678/5679 keeps
+                // the default-ish behavior whenever possible.
+                int editorPort = PortReadiness.FindFreePort(5678, 5687);
+                if (editorPort < 0) editorPort = 5678;
+                int brokerPort = PortReadiness.FindFreePort(editorPort + 1, 5697);
+                if (brokerPort < 0 || brokerPort == editorPort) brokerPort = editorPort + 1;
+                Port = editorPort;
+                BrokerPort = brokerPort;
 
                 OpenLogFile();
 
@@ -272,6 +283,7 @@ namespace N8nTray
                 };
                 psi.EnvironmentVariables["N8N_USER_FOLDER"] = _userDataDir;
                 psi.EnvironmentVariables["N8N_PORT"] = Port.ToString();
+                psi.EnvironmentVariables["N8N_RUNNERS_TASK_BROKER_PORT"] = BrokerPort.ToString();
                 psi.EnvironmentVariables["NODE_OPTIONS"] = "";
                 // Prepend bundled node dir to PATH so spawned children find npm/npx
                 var existingPath = psi.EnvironmentVariables.ContainsKey("PATH")
@@ -350,7 +362,8 @@ namespace N8nTray
                 _logWriter = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read), Encoding.UTF8);
                 _logWriter.AutoFlush = true;
                 _logWriter.WriteLine("=== n8n session started " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " ===");
-                _logWriter.WriteLine("Port: " + Port);
+                _logWriter.WriteLine("Editor port: " + Port);
+                _logWriter.WriteLine("Broker port: " + BrokerPort);
                 _logWriter.WriteLine("InstallDir: " + _installDir);
                 _logWriter.WriteLine("UserDataDir: " + _userDataDir);
                 _logWriter.WriteLine("--");
