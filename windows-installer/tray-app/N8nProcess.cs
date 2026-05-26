@@ -81,18 +81,74 @@ namespace N8nTray
         }
 
         /// Runs first-run install (npm install n8n) synchronously, returns true on success.
-        /// Streams output via LogLine.
+        /// Opens a visible PowerShell console window so the user can watch npm progress;
+        /// the same output is mirrored to bootstrap.log by the script.
         public bool RunFirstInstall(CancellationToken token)
         {
             SetState(N8nState.Installing);
             var scriptPath = Path.Combine(_installDir, "bootstrap", "first-run-install.ps1");
-            return RunPowerShell(scriptPath, "-InstallDir \"" + _installDir + "\"", token);
+            return RunPowerShellVisible(scriptPath, "-InstallDir \"" + _installDir + "\"", token);
         }
 
         public bool RunUpdate(CancellationToken token)
         {
             var scriptPath = Path.Combine(_installDir, "bootstrap", "update-n8n.ps1");
-            return RunPowerShell(scriptPath, "-InstallDir \"" + _installDir + "\"", token);
+            return RunPowerShellVisible(scriptPath, "-InstallDir \"" + _installDir + "\"", token);
+        }
+
+        // Opens a real console window for the script. Output goes to the visible console;
+        // the bootstrap script itself uses Tee-Object to ALSO write to bootstrap.log,
+        // so the file mirror is preserved even though we don't redirect stdout here.
+        private bool RunPowerShellVisible(string scriptPath, string args, CancellationToken token)
+        {
+            // Reset bootstrap.log with a session header so the file starts clean and the
+            // user can correlate console output with what's saved on disk.
+            try
+            {
+                Directory.CreateDirectory(_logDir);
+                using (var w = new StreamWriter(
+                    new FileStream(BootstrapLogPath, FileMode.Create, FileAccess.Write, FileShare.Read),
+                    Encoding.UTF8))
+                {
+                    w.WriteLine("=== bootstrap " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " ===");
+                    w.WriteLine("Script: " + scriptPath);
+                    w.WriteLine("Args  : " + args);
+                    w.WriteLine("A console window has been opened; this file mirrors the same output.");
+                    w.WriteLine("--");
+                }
+            }
+            catch { /* losing the log file is non-fatal */ }
+
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + scriptPath + "\" " + args,
+                    UseShellExecute = false,
+                    CreateNoWindow = false,
+                    WindowStyle = ProcessWindowStyle.Normal,
+                    WorkingDirectory = _installDir,
+                };
+                using (var p = Process.Start(psi))
+                {
+                    while (!p.HasExited)
+                    {
+                        if (token.IsCancellationRequested)
+                        {
+                            try { p.Kill(); } catch { }
+                            return false;
+                        }
+                        Thread.Sleep(200);
+                    }
+                    return p.ExitCode == 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                EmitLog("[FATAL] " + ex.Message);
+                return false;
+            }
         }
 
         private bool RunPowerShell(string scriptPath, string args, CancellationToken token)

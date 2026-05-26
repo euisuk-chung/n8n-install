@@ -56,14 +56,17 @@ $code = $LASTEXITCODE
 
 if ($code -ne 0) {
     Write-Error "npm install failed (exit code $code)"
+    Wait-Or-AutoClose -ExitCode $code
     exit $code
 }
 
 $version = Get-N8nVersion -InstallDir $InstallDir
 if (-not $version) {
     Write-Error "n8n install verification failed: could not read package.json"
+    Wait-Or-AutoClose -ExitCode 3
     exit 3
 }
 
 Write-Step "n8n $version install complete."
+Wait-Or-AutoClose -ExitCode 0
 exit 0

@@ -27,23 +27,39 @@ function Get-N8nVersion {
 
 function Invoke-Npm {
     # Runs npm with the bundled Node.js on PATH. Streams npm's stdout/stderr
-    # to the host (which the tray app captures into bootstrap.log), and
-    # exposes the exit code through the global $LASTEXITCODE — NOT through
-    # the function's return value. Returning $LASTEXITCODE here would mix
-    # the integer with any prior pipeline objects (npm output) and produce
-    # an array, which past versions of this code mistook for a non-zero
-    # exit status even after a successful install.
+    # to the visible console AND mirrors the same lines to bootstrap.log via
+    # Tee-Object. Exit code is exposed through the global $LASTEXITCODE,
+    # never as the function's return value — see prior commit for why.
     param(
         [Parameter(Mandatory=$true)][string]$InstallDir,
         [Parameter(Mandatory=$true)][string[]]$Args
     )
     $npm = Join-Path $InstallDir 'node\npm.cmd'
     $nodeDir = Join-Path $InstallDir 'node'
+    $logFile = Join-Path $env:USERPROFILE '.n8n\logs\bootstrap.log'
+    New-Item -ItemType Directory -Force -Path (Split-Path $logFile) | Out-Null
     $oldPath = $env:PATH
     try {
         $env:PATH = "$nodeDir;$oldPath"
-        & $npm @Args 2>&1 | ForEach-Object { Write-Host $_ }
+        & $npm @Args 2>&1 | Tee-Object -FilePath $logFile -Append
     } finally {
         $env:PATH = $oldPath
+    }
+}
+
+function Wait-Or-AutoClose {
+    # Used at the end of bootstrap scripts so the user can read the result
+    # before the visible console window vanishes. Failure -> wait for Enter.
+    # Success -> short countdown then auto-close.
+    param(
+        [Parameter(Mandatory=$true)][int]$ExitCode
+    )
+    Write-Host ""
+    if ($ExitCode -ne 0) {
+        Write-Host "FAILED (exit code $ExitCode). Press Enter to close this window..." -ForegroundColor Yellow
+        $null = Read-Host
+    } else {
+        Write-Host "Done. This window will close in 5 seconds..." -ForegroundColor Green
+        Start-Sleep -Seconds 5
     }
 }

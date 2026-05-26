@@ -41,9 +41,11 @@ $code = $LASTEXITCODE
 
 if ($code -ne 0) {
     Write-Error "npm install failed (exit code $code)"
+    Wait-Or-AutoClose -ExitCode $code
     exit $code
 }
 
 $after = Get-N8nVersion -InstallDir $InstallDir
 Write-Step "Update complete: $before -> $after"
+Wait-Or-AutoClose -ExitCode 0
 exit 0
