@@ -61,6 +61,17 @@ function Invoke-Npm {
     $env:FORCE_COLOR = '0'
     $env:NPM_CONFIG_COLOR = 'false'
 
+    # n8n's postinstall script invokes `npm ls @scarf/scarf --json --long`
+    # for telemetry detection. With npm 10+ that command exits 1 when the
+    # tree reports any extraneous package, which propagates up and makes
+    # the entire install look failed even though every package downloaded
+    # correctly. Disabling both Scarf analytics and n8n diagnostics short-
+    # circuits the offending check, and respects the user's "no telemetry"
+    # default for a local install.
+    $env:SCARF_ANALYTICS = 'false'
+    $env:DO_NOT_TRACK = '1'
+    $env:N8N_DIAGNOSTICS_ENABLED = 'false'
+
     $oldPath = $env:PATH
     try {
         $env:PATH = "$nodeDir;$oldPath"
