@@ -72,6 +72,16 @@ function Invoke-Npm {
     $env:DO_NOT_TRACK = '1'
     $env:N8N_DIAGNOSTICS_ENABLED = 'false'
 
+    # npm emits informational text (verbose, http, warn) to stderr at every
+    # log level. With $ErrorActionPreference = 'Stop' inherited from the
+    # caller, merging via 2>&1 turns each stderr line into a terminating
+    # ErrorRecord that fires the caller's trap on the very first message.
+    # Drop to 'Continue' for the duration of the npm run so those lines are
+    # treated as plain data — actual npm failures are still surfaced via
+    # $LASTEXITCODE.
+    $oldErrPref = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+
     $oldPath = $env:PATH
     try {
         $env:PATH = "$nodeDir;$oldPath"
@@ -82,6 +92,7 @@ function Invoke-Npm {
         }
     } finally {
         $env:PATH = $oldPath
+        $ErrorActionPreference = $oldErrPref
         try { $writer.Dispose() } catch {}
     }
 }
