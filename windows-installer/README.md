@@ -28,17 +28,22 @@ n8n-installer.exe (Inno Setup)
 
 ## 빌드 환경
 
-빌드는 **Windows에서만** 가능합니다. 필요한 도구:
+빌드는 **Windows에서만** 가능합니다. 다음 두 가지를 설치하면 모든 의존성이 갖춰집니다:
 
-| 도구 | 버전 | 설치 |
+1. **Visual Studio 2022 Community** (무료, 전체 IDE) — [다운로드](https://visualstudio.microsoft.com/vs/community/)
+   - 또는 더 가벼운 [Visual Studio Build Tools 2022](https://visualstudio.microsoft.com/downloads/?q=build+tools) 만 설치해도 됨
+   - 설치 시 **".NET 데스크톱 빌드 도구"** (.NET desktop build tools) 워크로드 체크 → MSBuild + .NET Framework 4.7.2 타겟 팩이 함께 설치됨
+2. **Inno Setup 6** — [jrsoftware.org/isdl.php](https://jrsoftware.org/isdl.php)
+
+| 도구 | 버전 | 비고 |
 |------|------|------|
 | Windows | 10/11 x64 | — |
 | PowerShell | 5.1+ | OS 내장 |
-| .NET Framework SDK | 4.7.2+ | [다운로드](https://dotnet.microsoft.com/download/dotnet-framework/net472) — Build Tools 만 있으면 OK |
-| Inno Setup | 6.x | [jrsoftware.org/isdl.php](https://jrsoftware.org/isdl.php) |
-| MSBuild | 16+ | Visual Studio Build Tools 또는 .NET SDK |
+| MSBuild | 16+ (VS 2019/2022 포함분) | `build.ps1` 가 `vswhere` 로 자동 탐지 |
+| .NET Framework Targeting Pack | 4.7.2 | VS 설치 시 "데스크톱 .NET" 워크로드와 함께 |
+| Inno Setup | 6.x | `%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe` |
 
-`ISCC.exe` 와 `msbuild.exe` 가 PATH 또는 표준 경로(`%ProgramFiles(x86)%\Inno Setup 6\`)에 있어야 합니다.
+`build.ps1` 는 MSBuild와 ISCC를 자동으로 찾으니, 표준 위치에 설치만 했다면 추가 설정 불필요합니다.
 
 ## 빌드 방법
 

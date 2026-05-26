@@ -30,22 +30,47 @@ try {
     # 2. MSBuild for tray app
     Write-Host "`n[2/4] Building tray app (Release)"
     if (-not $MsBuildPath) {
-        $candidates = @(
-            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
-            "${env:ProgramFiles}\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
-            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
-            "${env:WINDIR}\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe"
-        )
-        foreach ($c in $candidates) {
-            if ($c -and (Test-Path $c)) { $MsBuildPath = $c; break }
+        # Try vswhere first — works for any VS edition (Community/Pro/Enterprise/BuildTools, 2019/2022/etc)
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        if (Test-Path $vswhere) {
+            $found = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild `
+                -find 'MSBuild\**\Bin\MSBuild.exe' 2>$null | Select-Object -First 1
+            if ($found) { $MsBuildPath = $found }
         }
+
+        # Fallback: probe well-known install paths for all editions
+        if (-not $MsBuildPath) {
+            $editions = @('BuildTools', 'Community', 'Professional', 'Enterprise')
+            $years    = @('2022', '2019')
+            $roots    = @("${env:ProgramFiles}", "${env:ProgramFiles(x86)}")
+            foreach ($root in $roots) {
+                if (-not $root) { continue }
+                foreach ($year in $years) {
+                    foreach ($ed in $editions) {
+                        $p = Join-Path $root "Microsoft Visual Studio\$year\$ed\MSBuild\Current\Bin\MSBuild.exe"
+                        if (Test-Path $p) { $MsBuildPath = $p; break }
+                    }
+                    if ($MsBuildPath) { break }
+                }
+                if ($MsBuildPath) { break }
+            }
+        }
+
+        # Last resort: PATH lookup
         if (-not $MsBuildPath) {
             $cmd = Get-Command msbuild -ErrorAction SilentlyContinue
             if ($cmd) { $MsBuildPath = $cmd.Source }
         }
     }
     if (-not $MsBuildPath -or -not (Test-Path $MsBuildPath)) {
-        throw "MSBuild.exe not found. Install Visual Studio Build Tools or pass -MsBuildPath."
+        throw @"
+MSBuild.exe not found. Install one of:
+  - Visual Studio 2022 Community (free): https://visualstudio.microsoft.com/vs/community/
+  - Visual Studio Build Tools 2022 (smaller): https://visualstudio.microsoft.com/downloads/?q=build+tools
+During the installer, check 'Desktop development with C++' or '.NET desktop build tools' workload.
+
+Or pass -MsBuildPath 'C:\path\to\MSBuild.exe' explicitly.
+"@
     }
     Write-Host "MSBuild: $MsBuildPath"
 
