@@ -47,19 +47,41 @@ n8n-installer.exe (Inno Setup)
 
 ## 빌드 방법
 
+처음이라면 저장소부터 clone:
+
 ```powershell
-cd windows-installer
+git clone https://github.com/euisuk-chung/n8n-install.git
+cd n8n-install\windows-installer
+.\scripts\build.ps1 -Version 1.0.0
+```
+
+이미 clone 된 상태라면:
+
+```powershell
+cd <repo>\windows-installer
 .\scripts\build.ps1 -Version 1.0.0
 ```
 
 빌드 단계:
 
 1. `download-nodejs.ps1` — Node.js LTS 포터블 zip을 `vendor/` 로 다운로드 후 압축 해제
-2. `msbuild tray-app/N8nTray.csproj /p:Configuration=Release` — 트레이 EXE 빌드
+2. `msbuild tray-app/N8nTray.csproj /p:Configuration=Release` — 트레이 EXE 빌드 (MSBuild 위치는 `vswhere` 로 자동 탐지)
 3. `ISCC.exe setup.iss /DAppVersion=<version>` — 인스톨러 EXE 생성
 4. `verify-build.ps1` — 산출물 sanity check (크기, SHA256)
 
-산출물: `build/n8n-installer-<version>.exe`
+산출물: `<repo>\windows-installer\build\n8n-installer-<version>.exe`
+
+## GitHub Release 에 EXE 첨부하기 (수동)
+
+로컬 빌드 후 다른 사람에게 배포하려면:
+
+1. https://github.com/euisuk-chung/n8n-install/releases 접속
+2. **Draft a new release** 클릭
+3. **Choose a tag** → 기존 태그(예: `windows-installer-v1.0.0`) 선택 또는 새 태그 입력
+4. **Attach binaries** 영역에 `build\n8n-installer-1.0.0.exe` 드래그 앤 드롭
+5. 제목/설명 작성 후 **Publish release**
+
+GitHub Actions 가 자동으로 빌드/배포하길 원하면 [`Build: Windows Installer`](../.github/workflows/build-windows-installer.yml) 워크플로를 참고하세요 — `windows-installer-v*` 형식의 태그를 push 하면 자동 실행됩니다.
 
 ## 빠른 검증
 
@@ -122,10 +144,9 @@ windows-installer/
 | 빌드 EXE 백신 차단 | 코드 서명 미적용 — 임시로 빌드 폴더를 백신 예외 등록 |
 | 클린 VM 첫 실행 시 npm 실패 | 인터넷/프록시 확인 — 사용자 매뉴얼 참고 |
 
-## 향후 개선 (Out of Scope, v2 검토)
+## 향후 개선 (Out of Scope)
 
 - 코드 서명 인증서 도입 (SmartScreen 경고 제거)
-- GitHub Actions Windows runner 자동 빌드/릴리즈
 - 자동 업데이트 (Squirrel.Windows)
 - ARM64 빌드
 - Microsoft Store / winget 배포

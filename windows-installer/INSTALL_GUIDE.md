@@ -11,7 +11,8 @@
 ## 설치하기
 
 1. **인스톨러 다운로드**
-   - `n8n-installer-x.x.x.exe` 파일을 다운로드합니다.
+   - [Releases 페이지](https://github.com/euisuk-chung/n8n-install/releases) 에서 가장 최신 **`n8n-installer-x.x.x.exe`** 를 다운로드합니다.
+   - (Releases 에 EXE 가 아직 없다면 — 관리자에게 빌드된 파일을 요청하거나, 개발자라면 [`README.md`](./README.md) 의 "빌드 방법" 참조.)
 
 2. **더블클릭으로 설치 시작**
    - 다운로드한 파일을 더블클릭하면 한국어 설치 마법사가 시작됩니다.

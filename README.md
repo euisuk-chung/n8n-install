@@ -54,12 +54,13 @@ The installer bundles a portable Node.js LTS — no manual Node install required
 - **Build it yourself** on Windows 10/11:
 
   ```powershell
-  cd windows-installer
+  git clone https://github.com/euisuk-chung/n8n-install.git
+  cd n8n-install\windows-installer
   .\scripts\build.ps1 -Version 1.0.0
   # Output: build\n8n-installer-1.0.0.exe
   ```
 
-  Requires .NET Framework 4.7.2 Build Tools and [Inno Setup 6](https://jrsoftware.org/isdl.php).
+  Prerequisites: [Visual Studio 2022 Community](https://visualstudio.microsoft.com/vs/community/) (or [Build Tools 2022](https://visualstudio.microsoft.com/downloads/?q=build+tools)) with the **.NET desktop build tools** workload, plus [Inno Setup 6](https://jrsoftware.org/isdl.php). `build.ps1` finds MSBuild via `vswhere` automatically.
 
 - **Publish a release**: tag and push to trigger the CI build:
 
