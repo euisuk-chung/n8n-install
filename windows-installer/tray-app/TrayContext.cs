@@ -139,7 +139,9 @@ namespace N8nTray
                     bool ok = await Task.Run(() => _n8n.RunFirstInstall(token));
                     if (!ok)
                     {
-                        MessageBox.Show(Localization.T("Dialog.InstallFail", "see logs"), "n8n", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        var detail = "Log file: " + _n8n.BootstrapLogPath;
+                        MessageBox.Show(Localization.T("Dialog.InstallFail", detail), "n8n", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        try { Process.Start("notepad.exe", "\"" + _n8n.BootstrapLogPath + "\""); } catch { }
                         return;
                     }
                 }

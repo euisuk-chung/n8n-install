@@ -44,6 +44,11 @@ namespace N8nTray
             get { return Path.Combine(_logDir, "latest.log"); }
         }
 
+        public string BootstrapLogPath
+        {
+            get { return Path.Combine(_logDir, "bootstrap.log"); }
+        }
+
         public N8nProcess()
         {
             _installDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
@@ -92,8 +97,23 @@ namespace N8nTray
 
         private bool RunPowerShell(string scriptPath, string args, CancellationToken token)
         {
+            StreamWriter bootstrapLog = null;
             try
             {
+                try
+                {
+                    Directory.CreateDirectory(_logDir);
+                    bootstrapLog = new StreamWriter(
+                        new FileStream(BootstrapLogPath, FileMode.Create, FileAccess.Write, FileShare.Read),
+                        Encoding.UTF8);
+                    bootstrapLog.AutoFlush = true;
+                    bootstrapLog.WriteLine("=== bootstrap " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " ===");
+                    bootstrapLog.WriteLine("Script: " + scriptPath);
+                    bootstrapLog.WriteLine("Args  : " + args);
+                    bootstrapLog.WriteLine("--");
+                }
+                catch { /* fallthrough — losing the log file is non-fatal */ }
+
                 var psi = new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
@@ -106,8 +126,20 @@ namespace N8nTray
                 };
                 using (var p = Process.Start(psi))
                 {
-                    p.OutputDataReceived += (s, e) => { if (e.Data != null) EmitLog(e.Data); };
-                    p.ErrorDataReceived += (s, e) => { if (e.Data != null) EmitLog("[ERR] " + e.Data); };
+                    var log = bootstrapLog;
+                    p.OutputDataReceived += (s, e) =>
+                    {
+                        if (e.Data == null) return;
+                        EmitLog(e.Data);
+                        try { if (log != null) log.WriteLine(e.Data); } catch { }
+                    };
+                    p.ErrorDataReceived += (s, e) =>
+                    {
+                        if (e.Data == null) return;
+                        var line = "[ERR] " + e.Data;
+                        EmitLog(line);
+                        try { if (log != null) log.WriteLine(line); } catch { }
+                    };
                     p.BeginOutputReadLine();
                     p.BeginErrorReadLine();
 
@@ -120,13 +152,20 @@ namespace N8nTray
                         }
                         Thread.Sleep(200);
                     }
+                    if (bootstrapLog != null)
+                        bootstrapLog.WriteLine("-- exit code: " + p.ExitCode);
                     return p.ExitCode == 0;
                 }
             }
             catch (Exception ex)
             {
                 EmitLog("[FATAL] " + ex.Message);
+                try { if (bootstrapLog != null) bootstrapLog.WriteLine("[FATAL] " + ex); } catch { }
                 return false;
+            }
+            finally
+            {
+                try { if (bootstrapLog != null) bootstrapLog.Dispose(); } catch { }
             }
         }
 
