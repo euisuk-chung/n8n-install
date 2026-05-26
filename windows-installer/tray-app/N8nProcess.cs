@@ -82,12 +82,27 @@ namespace N8nTray
 
         /// Runs first-run install (npm install n8n) synchronously, returns true on success.
         /// Opens a visible PowerShell console window so the user can watch npm progress;
-        /// the same output is mirrored to bootstrap.log by the script.
+        /// the same output is mirrored to bootstrap.log by the script. Always resets
+        /// the state on exit so the tray menu reflects reality even when install fails.
         public bool RunFirstInstall(CancellationToken token)
         {
             SetState(N8nState.Installing);
             var scriptPath = Path.Combine(_installDir, "bootstrap", "first-run-install.ps1");
-            return RunPowerShellVisible(scriptPath, "-InstallDir \"" + _installDir + "\"", token);
+            try
+            {
+                var ok = RunPowerShellVisible(scriptPath, "-InstallDir \"" + _installDir + "\"", token);
+                // Re-check disk in case the install partially succeeded and bin/n8n
+                // is now present despite a non-zero exit (the postinstall telemetry
+                // check can fail even when every package was placed correctly).
+                if (!ok && IsN8nInstalled()) ok = true;
+                SetState(ok ? N8nState.Idle : N8nState.Error);
+                return ok;
+            }
+            catch
+            {
+                SetState(N8nState.Error);
+                throw;
+            }
         }
 
         public bool RunUpdate(CancellationToken token)

@@ -142,6 +142,7 @@ namespace N8nTray
                         var detail = "Log file: " + _n8n.BootstrapLogPath;
                         MessageBox.Show(Localization.T("Dialog.InstallFail", detail), "n8n", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         try { Process.Start("notepad.exe", "\"" + _n8n.BootstrapLogPath + "\""); } catch { }
+                        // RunFirstInstall already reset State to Error on failure; nothing else to do.
                         return;
                     }
                 }
