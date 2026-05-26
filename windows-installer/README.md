@@ -77,11 +77,11 @@ cd <repo>\windows-installer
 
 1. https://github.com/euisuk-chung/n8n-install/releases 접속
 2. **Draft a new release** 클릭
-3. **Choose a tag** → 기존 태그(예: `windows-installer-v1.0.0`) 선택 또는 새 태그 입력
+3. **Choose a tag** → 새 태그 입력 (예: `windows-installer-v1.0.0`)
 4. **Attach binaries** 영역에 `build\n8n-installer-1.0.0.exe` 드래그 앤 드롭
 5. 제목/설명 작성 후 **Publish release**
 
-GitHub Actions 가 자동으로 빌드/배포하길 원하면 [`Build: Windows Installer`](../.github/workflows/build-windows-installer.yml) 워크플로를 참고하세요 — `windows-installer-v*` 형식의 태그를 push 하면 자동 실행됩니다.
+> 자동 빌드 워크플로는 의존성 문제로 제거된 상태입니다. 모든 릴리즈는 위 절차로 수동 업로드합니다.
 
 ## 빠른 검증
 

@@ -50,7 +50,7 @@ The installer bundles a portable Node.js LTS — no manual Node install required
 
 **Getting the EXE**
 
-- **Pre-built**: [Releases](https://github.com/euisuk-chung/n8n-install/releases) (populated automatically when a `windows-installer-v*` tag is pushed via the [`Build: Windows Installer`](./.github/workflows/build-windows-installer.yml) workflow). If no release is published yet, build it yourself below.
+- **Pre-built**: [Releases](https://github.com/euisuk-chung/n8n-install/releases) — if a release is published, download `n8n-installer-<version>.exe` from its Assets. If none is published yet, build it yourself below.
 - **Build it yourself** on Windows 10/11:
 
   ```powershell
@@ -62,14 +62,7 @@ The installer bundles a portable Node.js LTS — no manual Node install required
 
   Prerequisites: [Visual Studio 2022 Community](https://visualstudio.microsoft.com/vs/community/) (or [Build Tools 2022](https://visualstudio.microsoft.com/downloads/?q=build+tools)) with the **.NET desktop build tools** workload, plus [Inno Setup 6](https://jrsoftware.org/isdl.php). `build.ps1` finds MSBuild via `vswhere` automatically.
 
-- **Publish a release**: tag and push to trigger the CI build:
-
-  ```bash
-  git tag windows-installer-v1.0.0
-  git push origin windows-installer-v1.0.0
-  ```
-
-  GitHub Actions builds on a Windows runner and attaches the EXE to a new Release.
+- **Publish a release** (manual): build locally, then go to the [Releases page](https://github.com/euisuk-chung/n8n-install/releases) → **Draft a new release** → choose a tag → upload `build\n8n-installer-<version>.exe` as an asset → **Publish release**.
 
 ## Resources
 
